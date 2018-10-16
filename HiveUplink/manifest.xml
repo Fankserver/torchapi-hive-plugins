@@ -1,0 +1,6 @@
+﻿<?xml version="1.0"?>
+<PluginManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Name>HiveUplink</Name>
+  <Guid>5e4eaa20-ad60-4add-98a0-a43d2195a67e</Guid>
+  <Version>v1.0.0.0</Version>
+</PluginManifest>
