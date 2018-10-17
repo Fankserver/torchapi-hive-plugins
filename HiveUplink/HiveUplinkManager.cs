@@ -11,6 +11,7 @@ using Torch.API.Managers;
 using Torch.API.Session;
 using Torch.Managers;
 using Torch.Session;
+using WebSocketSharp;
 
 namespace HiveUplink
 {
@@ -18,23 +19,73 @@ namespace HiveUplink
     {
         public readonly HiveConfig Config;
 
+        private static readonly NLog.Logger _log = LogManager.GetCurrentClassLogger();
+        private WebSocket _ws;
+        private TorchSessionManager _sessionManager;
+
         public HiveUplinkManager(ITorchBase torchInstance, HiveConfig config) : base(torchInstance)
         {
             Config = config;
+        }
 
-            using (var ws = new WebSocket("ws://dragonsnest.far/Laputa"))
+        private void SessionChanged(ITorchSession session, TorchSessionState newState)
+        {
+            if (newState == TorchSessionState.Loaded)
             {
-                ws.OnMessage += (sender, e) =>
-                  Console.WriteLine("Laputa says: " + e.Data);
-
-                ws.Connect();
-                ws.Send("BALUS");
-                Console.ReadKey(true);
+                _ws.Send("SESSION:Loaded");
             }
+            else if (newState == TorchSessionState.Unloading)
+            {
+                _ws.Send("SESSION:Unloading");
+            }
+        }
+
+        private void SetupWebSocket()
+        {
+            _ws = new WebSocket($"ws://hive.torch.fankserver.com/ws/hive/{Config.HiveId}/sector/{Config.SectorId}");
+            _ws.OnMessage += WebSocketOnMessage;
+            _ws.OnOpen += WebSocketOnOpen;
+            _ws.OnError += WebSocketOnError;
+            _ws.OnClose += WebSocketOnClose;
+            _ws.WaitTime = TimeSpan.FromSeconds(5);
+            _ws.ConnectAsync();
+        }
+
+        private void WebSocketOnClose(object sender, CloseEventArgs e)
+        {
+            if (e.WasClean)
+                _log.Warn(e.Reason);
+            else
+                _log.Error(e.Reason);
+        }
+
+        private void WebSocketOnError(object sender, ErrorEventArgs e)
+        {
+            _log.Error(e.Message);
+            _log.Error(e.Exception);
+        }
+
+        private void WebSocketOnOpen(object sender, EventArgs e)
+        {
+            _log.Info("Hive connection established");
+        }
+
+        private void WebSocketOnMessage(object sender, MessageEventArgs e)
+        {
+            _log.Info("Hive: " + e.Data);
+        }
 
         public override void Attach()
         {
             base.Attach();
+
+            _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
+            if (_sessionManager != null)
+                _sessionManager.SessionStateChanged += SessionChanged;
+            else
+                _log.Fatal("No session manager. FACTION HIVE DISABLED");
+
+            SetupWebSocket();
         }
 
         public override void Detach()
