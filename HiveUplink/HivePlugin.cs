@@ -31,6 +31,9 @@ namespace HiveUplink
 
             var manager = new HiveUplinkManager(torch, _config.Data);
             torch.Managers.AddManager(manager);
+
+            var factionManager = new HiveFactionManager(torch);
+            torch.Managers.AddManager(factionManager);
         }
     }
 }

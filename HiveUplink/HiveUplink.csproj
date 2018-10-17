@@ -96,6 +96,7 @@
     <Compile Include="HiveControl.xaml.cs">
       <DependentUpon>HiveControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="HiveFactionManager.cs" />
     <Compile Include="HiveUplinkManager.cs" />
     <Compile Include="HivePlugin.cs" />
     <Compile Include="HiveConfig.cs" />

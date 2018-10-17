@@ -1,6 +1,8 @@
 ﻿<?xml version="1.0"?>
 <PluginManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Name>HiveFaction</Name>
-  <Guid>c293eaef-21ca-4e1f-9729-7f2099d22717</Guid>
-  <Version>v1.0.0.0</Version>
+	<Name>HiveFaction</Name>
+	<Guid>c293eaef-21ca-4e1f-9729-7f2099d22717</Guid>
+	<Repository>Fankserver/torchapi-hive-plugins</Repository>
+	<Entrypoint>HiveFaction.HiveFactionPlugin</Entrypoint>
+	<Version>v1.0.0.0</Version>
 </PluginManifest>
