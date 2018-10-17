@@ -1,16 +1,9 @@
 ﻿using NLog;
 using Sandbox.Game.World;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Torch;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Session;
 using Torch.Managers;
-using Torch.Managers.PatchManager;
 using Torch.Session;
 
 namespace HiveUplink
@@ -93,39 +86,51 @@ namespace HiveUplink
         private void Factions_FactionEdited(long factionId)
         {
             _log.Warn($"Factions_FactionEdited {factionId}");
-            var editEvent = new FactionEditEvent
+            _uplinkManager.BroadcastChange(new HiveChangeEvent
             {
-                FactionId = factionId,
-                Tag = MySession.Static.Factions.Factions[factionId].Tag,
-                Name = MySession.Static.Factions.Factions[factionId].Name,
-                Description = MySession.Static.Factions.Factions[factionId].Description,
-                PrivateInfo = MySession.Static.Factions.Factions[factionId].PrivateInfo,
-            };
+                type = "factionEdited",
+                change = new FactionEditEvent
+                {
+                    FactionId = factionId,
+                    Tag = MySession.Static.Factions.Factions[factionId].Tag,
+                    Name = MySession.Static.Factions.Factions[factionId].Name,
+                    Description = MySession.Static.Factions.Factions[factionId].Description,
+                    PrivateInfo = MySession.Static.Factions.Factions[factionId].PrivateInfo,
+                },
+            });
         }
 
         private void Factions_FactionAutoAcceptChanged(long factionId, bool autoAcceptMember, bool autoAcceptPeace)
         {
             _log.Warn($"Factions_FactionAutoAcceptChanged {factionId} {autoAcceptMember} {autoAcceptPeace}");
-            var createEvent = new FactionAutoAcceptChangeEvent
+            _uplinkManager.BroadcastChange(new HiveChangeEvent
             {
-                FactionId = factionId,
-                AutoAcceptMember = autoAcceptMember,
-                AutoAcceptPeace = autoAcceptPeace,
-            };
+                type = "factionAutoAcceptChanged",
+                change = new FactionAutoAcceptChangeEvent
+                {
+                    FactionId = factionId,
+                    AutoAcceptMember = autoAcceptMember,
+                    AutoAcceptPeace = autoAcceptPeace,
+                },
+            });
         }
 
         private void Factions_FactionCreated(long factionId)
         {
             _log.Warn($"Factions_FactionCreated {factionId}");
-            var createEvent = new FactionCreateEvent
+            _uplinkManager.BroadcastChange(new HiveChangeEvent
             {
-                FactionId = factionId,
-                Tag = MySession.Static.Factions.Factions[factionId].Tag,
-                Name = MySession.Static.Factions.Factions[factionId].Name,
-                Description = MySession.Static.Factions.Factions[factionId].Description,
-                PrivateInfo = MySession.Static.Factions.Factions[factionId].PrivateInfo,
-                AcceptHumans = MySession.Static.Factions.Factions[factionId].AcceptHumans,
-            };
+                type = "factionCreated",
+                change = new FactionCreateEvent
+                {
+                    FactionId = factionId,
+                    Tag = MySession.Static.Factions.Factions[factionId].Tag,
+                    Name = MySession.Static.Factions.Factions[factionId].Name,
+                    Description = MySession.Static.Factions.Factions[factionId].Description,
+                    PrivateInfo = MySession.Static.Factions.Factions[factionId].PrivateInfo,
+                    AcceptHumans = MySession.Static.Factions.Factions[factionId].AcceptHumans,
+                },
+            });
         }
 
         public override void Detach()

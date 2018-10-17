@@ -4,7 +4,6 @@ using System.Windows.Controls;
 using Torch;
 using Torch.API;
 using Torch.API.Plugins;
-using Torch.Views;
 
 namespace HiveUplink
 {

@@ -1,11 +1,6 @@
-﻿using Newtonsoft.Json;
-using NLog;
-using Sandbox.Game.World;
+﻿using NLog;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Session;
@@ -27,6 +22,30 @@ namespace HiveUplink
         public HiveUplinkManager(ITorchBase torchInstance, HiveConfig config) : base(torchInstance)
         {
             Config = config;
+        }
+
+        public override void Attach()
+        {
+            base.Attach();
+
+            _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
+            if (_sessionManager != null)
+                _sessionManager.SessionStateChanged += SessionChanged;
+            else
+                _log.Fatal("No session manager. FACTION HIVE DISABLED");
+
+            SetupWebSocket();
+        }
+
+        public override void Detach()
+        {
+            base.Detach();
+        }
+
+        public void BroadcastChange(HiveChangeEvent ev)
+        {
+            var json = new JavaScriptSerializer().Serialize(ev);
+            _ws.Send(json);
         }
 
         private void SessionChanged(ITorchSession session, TorchSessionState newState)
@@ -80,24 +99,20 @@ namespace HiveUplink
         private void WebSocketOnMessage(object sender, MessageEventArgs e)
         {
             _log.Info("Hive: " + e.Data);
+            var ev = new JavaScriptSerializer().Deserialize<HiveChangeEvent>(e.Data);
+            if (ev == null)
+            {
+                _log.Error($"Unable to deserialize message: {e.Data}");
+                return;
+            }
+
+            _log.Warn($"Event: {ev.type}");
         }
+    }
 
-        public override void Attach()
-        {
-            base.Attach();
-
-            _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
-            if (_sessionManager != null)
-                _sessionManager.SessionStateChanged += SessionChanged;
-            else
-                _log.Fatal("No session manager. FACTION HIVE DISABLED");
-
-            SetupWebSocket();
-        }
-
-        public override void Detach()
-        {
-            base.Detach();
-        }
+    public class HiveChangeEvent
+    {
+        public string type;
+        public object change;
     }
 }
