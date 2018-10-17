@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HiveUplink"
-             mc:Ignorable="d" d:DesignWidth="205" d:DesignHeight="230">
+             mc:Ignorable="d">
 	<UserControl.DataContext>
 		<local:HiveConfig/>
 	</UserControl.DataContext>
