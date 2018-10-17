@@ -21,6 +21,7 @@ namespace HiveUplink
 
         private static readonly NLog.Logger _log = LogManager.GetCurrentClassLogger();
         private WebSocket _ws;
+        private bool _wsEnabled = false;
         private TorchSessionManager _sessionManager;
 
         public HiveUplinkManager(ITorchBase torchInstance, HiveConfig config) : base(torchInstance)
@@ -37,11 +38,14 @@ namespace HiveUplink
             else if (newState == TorchSessionState.Unloading)
             {
                 _ws.Send("SESSION:Unloading");
+                _wsEnabled = false;
+                _ws.CloseAsync();
             }
         }
 
         private void SetupWebSocket()
         {
+            _wsEnabled = true;
             _ws = new WebSocket($"ws://hive.torch.fankserver.com/ws/hive/{Config.HiveId}/sector/{Config.SectorId}");
             _ws.OnMessage += WebSocketOnMessage;
             _ws.OnOpen += WebSocketOnOpen;
@@ -57,6 +61,9 @@ namespace HiveUplink
                 _log.Warn(e.Reason);
             else
                 _log.Error(e.Reason);
+
+            if (_wsEnabled)
+                _ws.ConnectAsync();
         }
 
         private void WebSocketOnError(object sender, ErrorEventArgs e)
