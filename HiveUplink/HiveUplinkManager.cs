@@ -1,5 +1,6 @@
 ﻿using NLog;
 using System;
+using System.Collections.Generic;
 using System.Web.Script.Serialization;
 using Torch.API;
 using Torch.API.Managers;
@@ -18,6 +19,7 @@ namespace HiveUplink
         private WebSocket _ws;
         private bool _wsEnabled = false;
         private TorchSessionManager _sessionManager;
+        private Dictionary<string, List<Action<string>>> changeListeners = new Dictionary<string, List<Action<string>>>();
 
         public HiveUplinkManager(ITorchBase torchInstance, HiveConfig config) : base(torchInstance)
         {
@@ -42,10 +44,26 @@ namespace HiveUplink
             base.Detach();
         }
 
-        public void BroadcastChange(HiveChangeEvent ev)
+        public void PublishChange(HiveChangeEvent ev)
         {
             var json = new JavaScriptSerializer().Serialize(ev);
             _ws.Send(json);
+        }
+
+        public void RegisterChangeListener(string eventType, Action<string> action)
+        {
+            if (!changeListeners.ContainsKey(eventType))
+                changeListeners.Add(eventType, new List<Action<string>>());
+
+            changeListeners[eventType].Add(action);
+        }
+
+        public void UnregisterChangeListener(string eventType, Action<string> action)
+        {
+            if (!changeListeners.ContainsKey(eventType))
+                return;
+
+            changeListeners[eventType].Remove(action);
         }
 
         private void SessionChanged(ITorchSession session, TorchSessionState newState)
@@ -107,12 +125,17 @@ namespace HiveUplink
             }
 
             _log.Warn($"Event: {ev.type}");
+            if (!changeListeners.ContainsKey(ev.type))
+                return;
+
+            foreach (var action in changeListeners[ev.type])
+                action.Invoke(ev.raw);
         }
     }
 
     public class HiveChangeEvent
     {
         public string type;
-        public object change;
+        public string raw;
     }
 }

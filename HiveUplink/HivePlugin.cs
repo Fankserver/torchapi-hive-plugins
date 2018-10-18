@@ -28,6 +28,12 @@ namespace HiveUplink
             _log.Info($"Attempting to load config from {path}");
             _config = Persistent<HiveConfig>.Load(path);
 
+            if (_config.Data.HiveId == null && _config.Data.SectorId == null)
+            {
+                _log.Fatal($"Setup config and restart the server to enable hive uplink");
+                return;
+            }
+
             var manager = new HiveUplinkManager(torch, _config.Data);
             torch.Managers.AddManager(manager);
 

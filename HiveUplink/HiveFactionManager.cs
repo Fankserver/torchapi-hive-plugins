@@ -1,18 +1,30 @@
 ﻿using NLog;
+using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
+using Sandbox.ModAPI;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web.Script.Serialization;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Session;
 using Torch.Managers;
 using Torch.Session;
+using VRage.Game;
 
 namespace HiveUplink
 {
     class HiveFactionManager : Manager
     {
+        const string EVENT_TYPE_FACTION_CREATED = "factionCreated";
+        const string EVENT_TYPE_FACTION_CREATED_COMPLETE = "factionCreatedComplete";
+        const string EVENT_TYPE_FACTION_EDITED = "factionEdited";
+
         private static readonly Logger _log = LogManager.GetCurrentClassLogger();
         private HiveUplinkManager _uplinkManager;
         private TorchSessionManager _sessionManager;
+
+        private List<string> factionCreateEventIgnoreTag = new List<string>();
 
         public HiveFactionManager(ITorchBase torchInstance) : base(torchInstance)
         {
@@ -33,21 +45,32 @@ namespace HiveUplink
                 _log.Fatal("No session manager. FACTION HIVE DISABLED");
         }
 
+        public override void Detach()
+        {
+            base.Detach();
+        }
+
         private void SessionChanged(ITorchSession session, TorchSessionState newState)
         {
-            if (newState == TorchSessionState.Loaded)
+            if (newState == TorchSessionState.Loading)
             {
-                MySession.Static.Factions.FactionCreated += Factions_FactionCreated;
-                MySession.Static.Factions.FactionAutoAcceptChanged += Factions_FactionAutoAcceptChanged;
-                MySession.Static.Factions.FactionEdited += Factions_FactionEdited;
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_CREATED, ReceivedFactionCreated);
+            }
+            else if (newState == TorchSessionState.Loaded)
+            {
+                MySession.Static.Factions.FactionCreated += NotifyFactionCreated;
+                MySession.Static.Factions.FactionAutoAcceptChanged += NotifyFactionAutoAcceptChanged;
+                MySession.Static.Factions.FactionEdited += NotifyFactionEdited;
                 MySession.Static.Factions.FactionStateChanged += Factions_FactionStateChanged;
             }
             else if (newState == TorchSessionState.Unloading)
             {
-                MySession.Static.Factions.FactionCreated -= Factions_FactionCreated;
-                MySession.Static.Factions.FactionAutoAcceptChanged -= Factions_FactionAutoAcceptChanged;
-                MySession.Static.Factions.FactionEdited -= Factions_FactionEdited;
+                MySession.Static.Factions.FactionCreated -= NotifyFactionCreated;
+                MySession.Static.Factions.FactionAutoAcceptChanged -= NotifyFactionAutoAcceptChanged;
+                MySession.Static.Factions.FactionEdited -= NotifyFactionEdited;
                 MySession.Static.Factions.FactionStateChanged -= Factions_FactionStateChanged;
+
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_CREATED, ReceivedFactionCreated);
             }
         }
 
@@ -83,45 +106,37 @@ namespace HiveUplink
             }
         }
 
-        private void Factions_FactionEdited(long factionId)
+        private void NotifyFactionAutoAcceptChanged(long factionId, bool autoAcceptMember, bool autoAcceptPeace)
         {
-            _log.Warn($"Factions_FactionEdited {factionId}");
-            _uplinkManager.BroadcastChange(new HiveChangeEvent
-            {
-                type = "factionEdited",
-                change = new FactionEditEvent
-                {
-                    FactionId = factionId,
-                    Tag = MySession.Static.Factions.Factions[factionId].Tag,
-                    Name = MySession.Static.Factions.Factions[factionId].Name,
-                    Description = MySession.Static.Factions.Factions[factionId].Description,
-                    PrivateInfo = MySession.Static.Factions.Factions[factionId].PrivateInfo,
-                },
-            });
-        }
-
-        private void Factions_FactionAutoAcceptChanged(long factionId, bool autoAcceptMember, bool autoAcceptPeace)
-        {
-            _log.Warn($"Factions_FactionAutoAcceptChanged {factionId} {autoAcceptMember} {autoAcceptPeace}");
-            _uplinkManager.BroadcastChange(new HiveChangeEvent
+            _log.Warn($"NotifyFactionAutoAcceptChanged {factionId} {autoAcceptMember} {autoAcceptPeace}");
+            _uplinkManager.PublishChange(new HiveChangeEvent
             {
                 type = "factionAutoAcceptChanged",
-                change = new FactionAutoAcceptChangeEvent
+                raw = new JavaScriptSerializer().Serialize(new FactionAutoAcceptChangeEvent
                 {
                     FactionId = factionId,
                     AutoAcceptMember = autoAcceptMember,
                     AutoAcceptPeace = autoAcceptPeace,
-                },
+                }),
             });
         }
 
-        private void Factions_FactionCreated(long factionId)
+        private void NotifyFactionCreated(long factionId)
         {
-            _log.Warn($"Factions_FactionCreated {factionId}");
-            _uplinkManager.BroadcastChange(new HiveChangeEvent
+            if (factionCreateEventIgnoreTag.Exists((tag) => tag == MySession.Static.Factions.Factions[factionId].Tag))
             {
-                type = "factionCreated",
-                change = new FactionCreateEvent
+                factionCreateEventIgnoreTag.Remove(MySession.Static.Factions.Factions[factionId].Tag);
+                return;
+            }
+
+            _log.Info($"NotifyFactionCreated {factionId}");
+            var founderId = MySession.Static.Factions.Factions[factionId].FounderId;
+            var founderSteamId = MySession.Static.Players.TryGetSteamId(founderId);
+            var founderName = MySession.Static.Players.TryGetIdentityNameFromSteamId(founderSteamId);
+            _uplinkManager.PublishChange(new HiveChangeEvent
+            {
+                type = EVENT_TYPE_FACTION_CREATED,
+                raw = new JavaScriptSerializer().Serialize(new FactionCreateEvent
                 {
                     FactionId = factionId,
                     Tag = MySession.Static.Factions.Factions[factionId].Tag,
@@ -129,13 +144,116 @@ namespace HiveUplink
                     Description = MySession.Static.Factions.Factions[factionId].Description,
                     PrivateInfo = MySession.Static.Factions.Factions[factionId].PrivateInfo,
                     AcceptHumans = MySession.Static.Factions.Factions[factionId].AcceptHumans,
-                },
+                    FounderId = founderId,
+                    FounderSteamId = founderSteamId,
+                    FounderName = founderName,
+                }),
             });
         }
 
-        public override void Detach()
+        private void ReceivedFactionCreated(string ev)
         {
-            base.Detach();
+            var factionCreated = new JavaScriptSerializer().Deserialize<FactionCreateEvent>(ev);
+            if (factionCreated == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            _log.Info($"New faction received: {factionCreated.Name} {factionCreated.Tag} by {factionCreated.FounderId}");
+            var founderId = SandboxHack.Player.TryGetIdentityId(factionCreated.FounderSteamId, factionCreated.FounderName);
+
+            var faction = MySession.Static.Factions.TryGetFactionByTag(factionCreated.Tag);
+            if (faction != null)
+            {
+                var valid = false;
+
+                Torch.InvokeBlocking(() =>
+                {
+                    foreach (KeyValuePair<long, MyFactionMember> member in faction.Members)
+                    {
+                        if (member.Value.IsFounder && member.Value.PlayerId == founderId)
+                        {
+                            valid = true;
+                            break;
+                        }
+                    }
+
+                    if (!valid)
+                    {
+                        _log.Warn("Faction not valid removing");
+                        while (faction.Members.Count > 0)
+                            faction.KickMember(faction.Members.Keys.First());
+                    }
+                    else
+                    {
+                        faction.Name = factionCreated.Name;
+                        faction.Description = factionCreated.Description;
+                        faction.PrivateInfo = factionCreated.PrivateInfo;
+                    }
+                });
+
+                if (!valid)
+                    return;
+            }
+
+            Torch.InvokeBlocking(() =>
+            {
+                factionCreateEventIgnoreTag.Add(factionCreated.Tag);
+                MySession.Static.Factions.CreateFaction(founderId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
+                faction = MySession.Static.Factions.TryGetFactionByTag(factionCreated.Tag);
+            });
+            if (faction == null)
+            {
+                _log.Fatal($"created faction {factionCreated.Tag} not found");
+                return;
+            }
+
+            _uplinkManager.PublishChange(new HiveChangeEvent
+            {
+                type = EVENT_TYPE_FACTION_CREATED_COMPLETE,
+                raw = new JavaScriptSerializer().Serialize(new FactionCreateCompleteEvent
+                {
+                    FactionId = faction.FactionId,
+                    Tag = faction.Tag,
+                }),
+            });
+        }
+
+        private void NotifyFactionEdited(long factionId)
+        {
+            _log.Warn($"NotifyFactionEdited {factionId}");
+            _uplinkManager.PublishChange(new HiveChangeEvent
+            {
+                type = EVENT_TYPE_FACTION_EDITED,
+                raw = new JavaScriptSerializer().Serialize(new FactionEditEvent
+                {
+                    FactionId = factionId,
+                    Tag = MySession.Static.Factions.Factions[factionId].Tag,
+                    Name = MySession.Static.Factions.Factions[factionId].Name,
+                    Description = MySession.Static.Factions.Factions[factionId].Description,
+                    PrivateInfo = MySession.Static.Factions.Factions[factionId].PrivateInfo,
+                }),
+            });
+        }
+
+        private void ReceivedFactionEdited(string ev)
+        {
+            var factionEdited = new JavaScriptSerializer().Deserialize<FactionEditEvent>(ev);
+            if (factionEdited == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionEdited.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {faction.FactionId} does not exists");
+                return;
+            }
+
+            return;
         }
     }
 
@@ -147,6 +265,14 @@ namespace HiveUplink
         public string Description { get; set; }
         public string PrivateInfo { get; set; }
         public bool AcceptHumans { get; set; }
+        public long FounderId { get; set; }
+        public ulong FounderSteamId { get; set; }
+        public string FounderName { get; set; }
+    }
+    public class FactionCreateCompleteEvent
+    {
+        public long FactionId { get; set; }
+        public string Tag { get; set; }
     }
 
     public class FactionAutoAcceptChangeEvent
