@@ -1,7 +1,6 @@
 ﻿using NLog;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
-using Sandbox.ModAPI;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Script.Serialization;
@@ -184,6 +183,8 @@ namespace HiveUplink
                         _log.Warn("Faction not valid removing");
                         while (faction.Members.Count > 0)
                             faction.KickMember(faction.Members.Keys.First());
+
+                        MyFactionCollection.RemoveFaction(faction.FactionId);
                     }
                     else
                     {

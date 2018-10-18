@@ -25,7 +25,7 @@ namespace HiveUplink.SandboxHack
 
             MyPlayer player = MySession.Static.Players.CreateNewPlayer(myIdentity, steamClient, myIdentity.DisplayName, realPlayer);
             MySession.Static.Players.RemovePlayer(player);
-            return MyAPIGateway.Players.TryGetIdentityId(steamId);
+            return MySession.Static.Players.TryGetIdentityId(steamId);
         }
     }
 }
