@@ -1,6 +1,7 @@
 ﻿using NLog;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Web.Script.Serialization;
 using Torch.API;
 using Torch.API.Managers;
@@ -13,6 +14,8 @@ namespace HiveUplink
 {
     public class HiveUplinkManager : Manager
     {
+        const string EVENT_TYPE_SERVER_STATE_CHANGED = "serverStateChange";
+
         public readonly HiveConfig Config;
 
         private static readonly NLog.Logger _log = LogManager.GetCurrentClassLogger();
@@ -47,6 +50,7 @@ namespace HiveUplink
         public void PublishChange(HiveChangeEvent ev)
         {
             var json = new JavaScriptSerializer().Serialize(ev);
+            _log.Info($"PublishChange: {json}");
             _ws.Send(json);
         }
 
@@ -68,13 +72,17 @@ namespace HiveUplink
 
         private void SessionChanged(ITorchSession session, TorchSessionState newState)
         {
-            if (newState == TorchSessionState.Loaded)
+            PublishChange(new HiveChangeEvent
             {
-                _ws.Send("SESSION:Loaded");
-            }
-            else if (newState == TorchSessionState.Unloading)
+                type = EVENT_TYPE_SERVER_STATE_CHANGED,
+                raw = new JavaScriptSerializer().Serialize(new ServerStateChanged
+                {
+                    State = newState.ToString(),
+                }),
+            });
+
+            if (newState == TorchSessionState.Unloading)
             {
-                _ws.Send("SESSION:Unloading");
                 _wsEnabled = false;
                 _ws.CloseAsync();
             }
@@ -100,7 +108,10 @@ namespace HiveUplink
                 _log.Error(e.Reason);
 
             if (_wsEnabled)
+            {
+                Thread.Sleep(5000);
                 _ws.ConnectAsync();
+            }
         }
 
         private void WebSocketOnError(object sender, ErrorEventArgs e)
@@ -137,5 +148,10 @@ namespace HiveUplink
     {
         public string type;
         public string raw;
+    }
+
+    public class ServerStateChanged
+    {
+        public string State { get; set; }
     }
 }
