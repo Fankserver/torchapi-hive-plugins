@@ -23,7 +23,7 @@ namespace HiveUplink
         private HiveUplinkManager _uplinkManager;
         private TorchSessionManager _sessionManager;
 
-        private List<string> factionCreateEventIgnoreTag = new List<string>();
+        private List<string> factionCreateNotifyComplete = new List<string>();
 
         public HiveFactionManager(ITorchBase torchInstance) : base(torchInstance)
         {
@@ -122,9 +122,20 @@ namespace HiveUplink
 
         private void NotifyFactionCreated(long factionId)
         {
-            if (factionCreateEventIgnoreTag.Exists((tag) => tag == MySession.Static.Factions.Factions[factionId].Tag))
+            if (factionCreateNotifyComplete.Exists((tag) => tag == MySession.Static.Factions.Factions[factionId].Tag))
             {
-                factionCreateEventIgnoreTag.Remove(MySession.Static.Factions.Factions[factionId].Tag);
+                factionCreateNotifyComplete.Remove(MySession.Static.Factions.Factions[factionId].Tag);
+
+                _uplinkManager.PublishChange(new HiveChangeEvent
+                {
+                    type = EVENT_TYPE_FACTION_CREATED_COMPLETE,
+                    raw = new JavaScriptSerializer().Serialize(new FactionCreateCompleteEvent
+                    {
+                        FactionId = factionId,
+                        Tag = MySession.Static.Factions.Factions[factionId].Tag,
+                    }),
+                });
+
                 return;
             }
 
@@ -198,26 +209,10 @@ namespace HiveUplink
                     return;
             }
 
-            Torch.InvokeBlocking(() =>
+            Torch.Invoke(() =>
             {
-                factionCreateEventIgnoreTag.Add(factionCreated.Tag);
+                factionCreateNotifyComplete.Add(factionCreated.Tag);
                 MySession.Static.Factions.CreateFaction(founderId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
-                faction = MySession.Static.Factions.TryGetFactionByTag(factionCreated.Tag);
-            });
-            if (faction == null)
-            {
-                _log.Fatal($"created faction {factionCreated.Tag} not found");
-                return;
-            }
-
-            _uplinkManager.PublishChange(new HiveChangeEvent
-            {
-                type = EVENT_TYPE_FACTION_CREATED_COMPLETE,
-                raw = new JavaScriptSerializer().Serialize(new FactionCreateCompleteEvent
-                {
-                    FactionId = faction.FactionId,
-                    Tag = faction.Tag,
-                }),
             });
         }
 
