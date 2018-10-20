@@ -97,10 +97,10 @@ namespace HiveUplink
             _ws.OnOpen += WebSocketOnOpen;
             _ws.OnError += WebSocketOnError;
             _ws.OnClose += WebSocketOnClose;
-            _ws.EmitOnPing = true;
-            _ws.Log.Output = (LogData a, string b) =>
-            {
-                _log.Info(b);
+            _ws.WaitTime = TimeSpan.FromSeconds(2);
+            _ws.Log.Level = WebSocketSharp.LogLevel.Debug;
+            _ws.Log.Output = (data, s) => {
+                _log.Warn(data.Message);
             };
             _ws.Connect();
         }
