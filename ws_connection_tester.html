@@ -1,0 +1,67 @@
+<!DOCTYPE HTML>
+
+<html>
+   <head>
+      
+      <script type = "text/javascript">
+         function WebSocketTest() {
+            
+            if ("WebSocket" in window) {
+               
+               // Let us open a web socket
+               var ws = new WebSocket("ws://hive.torch.fankserver.com/ws/hive/5bc78ff57e2ea3ce583dc6fb/sector/5bcb8a527e2ea3ce583e3191");
+				
+               ws.onopen = function() {
+                  	var para = document.createElement("p");
+					var node = document.createTextNode("Connected");
+					para.appendChild(node);
+
+					var element = document.getElementById("log");
+					element.appendChild(para);
+               };
+				
+               ws.onmessage = function (evt) { 
+					var para = document.createElement("p");
+					var node = document.createTextNode(evt.data);
+					para.appendChild(node);
+
+					var element = document.getElementById("log");
+					element.appendChild(para);
+               };
+				
+               ws.onclose = function() { 
+                  	var para = document.createElement("p");
+					var node = document.createTextNode("Connection is closed...");
+					para.appendChild(node);
+
+					var element = document.getElementById("log");
+					element.appendChild(para);
+               };
+			   
+			   
+		 
+		const node = document.getElementById("in");
+		node.addEventListener("keyup", function(event) {
+			if (event.key === "Enter") {
+				ws.send(node.value);
+			}
+		});
+		
+            } else {
+              
+               // The browser doesn't support WebSocket
+               alert("WebSocket NOT supported by your Browser!");
+            }
+         }
+      </script>
+		
+   </head>
+   
+   <body>
+      <div id = "sse">
+         <a href = "javascript:WebSocketTest()">Run WebSocket</a>
+      </div>
+	  <input id="in"></div>
+      <div id="log"></div>
+   </body>
+</html>

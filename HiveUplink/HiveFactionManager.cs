@@ -1,7 +1,6 @@
 ﻿using NLog;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
-using Sandbox.ModAPI;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Script.Serialization;
@@ -204,7 +203,7 @@ namespace HiveUplink
                     else
                     {
                         factionEditedIgnore.Add(faction.FactionId);
-                        MyAPIGateway.Session.Factions.EditFaction(faction.FactionId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
+                        MySession.Static.Factions.EditFaction(faction.FactionId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
                     }
                 });
 
@@ -213,7 +212,7 @@ namespace HiveUplink
             }
 
             factionCreateNotifyComplete.Add(factionCreated.Tag);
-            MyAPIGateway.Session.Factions.CreateFaction(founderId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
+            MySession.Static.Factions.CreateFaction(founderId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
         }
 
         private void NotifyFactionEdited(long factionId)
