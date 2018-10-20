@@ -46,6 +46,10 @@ namespace HiveUplink
         public override void Detach()
         {
             base.Detach();
+
+            _wsEnabled = false;
+            if (_ws.IsAlive)
+                _ws.Close();
         }
 
         public void PublishChange(HiveChangeEvent ev)
@@ -84,12 +88,6 @@ namespace HiveUplink
                     State = newState.ToString(),
                 }),
             });
-
-            if (newState == TorchSessionState.Unloading)
-            {
-                _wsEnabled = false;
-                _ws.CloseAsync();
-            }
         }
 
         private void SetupWebSocket()
@@ -99,7 +97,12 @@ namespace HiveUplink
             _ws.OnOpen += WebSocketOnOpen;
             _ws.OnError += WebSocketOnError;
             _ws.OnClose += WebSocketOnClose;
-            _ws.ConnectAsync();
+            _ws.EmitOnPing = true;
+            _ws.Log.Output = (LogData a, string b) =>
+            {
+                _log.Info(b);
+            };
+            _ws.Connect();
         }
 
         private void WebSocketOnClose(object sender, CloseEventArgs e)

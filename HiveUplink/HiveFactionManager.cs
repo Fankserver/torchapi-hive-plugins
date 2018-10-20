@@ -3,6 +3,7 @@ using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Web.Script.Serialization;
 using Torch.API;
 using Torch.API.Managers;
@@ -122,24 +123,15 @@ namespace HiveUplink
 
         private void NotifyFactionCreated(long factionId)
         {
-            if (factionCreateNotifyComplete.Exists((tag) => tag == MySession.Static.Factions.Factions[factionId].Tag))
-            {
-                factionCreateNotifyComplete.Remove(MySession.Static.Factions.Factions[factionId].Tag);
-
-                _uplinkManager.PublishChange(new HiveChangeEvent
-                {
-                    type = EVENT_TYPE_FACTION_CREATED_COMPLETE,
-                    raw = new JavaScriptSerializer().Serialize(new FactionCreateCompleteEvent
-                    {
-                        FactionId = factionId,
-                        Tag = MySession.Static.Factions.Factions[factionId].Tag,
-                    }),
-                });
-
-                return;
-            }
-
             _log.Info($"NotifyFactionCreated {factionId}");
+
+            //if (factionCreateNotifyComplete.Exists((tag) => tag == MySession.Static.Factions.Factions[factionId].Tag))
+            //{
+            //    factionCreateNotifyComplete.Remove(MySession.Static.Factions.Factions[factionId].Tag);
+
+            //    return;
+            //}
+
             var founderId = MySession.Static.Factions.Factions[factionId].FounderId;
             var founderSteamId = MySession.Static.Players.TryGetSteamId(founderId);
             var founderName = MySession.Static.Players.TryGetIdentityNameFromSteamId(founderSteamId);
@@ -198,22 +190,39 @@ namespace HiveUplink
                         MyFactionCollection.RemoveFaction(faction.FactionId);
                     }
                     else
-                    {
-                        faction.Name = factionCreated.Name;
-                        faction.Description = factionCreated.Description;
-                        faction.PrivateInfo = factionCreated.PrivateInfo;
-                    }
+                        MySession.Static.Factions.EditFaction(faction.FactionId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
                 });
 
-                if (!valid)
+                if (valid)
                     return;
             }
 
-            Torch.Invoke(() =>
+            factionCreateNotifyComplete.Add(factionCreated.Tag);
+            MySession.Static.Factions.CreateFaction(founderId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
+
+            // I tried to use the "MySession.Static.Factions.FactionCreated" event to get the faction, but it is not called.
+            // So i use a thread and wait, to hope until this time the faction is beeing created
+            new Thread(() =>
             {
-                factionCreateNotifyComplete.Add(factionCreated.Tag);
-                MySession.Static.Factions.CreateFaction(founderId, factionCreated.Tag, factionCreated.Name, factionCreated.Description, factionCreated.PrivateInfo);
-            });
+                Thread.Sleep(500);
+                var faction2 = MySession.Static.Factions.TryGetFactionByTag(factionCreated.Tag);
+
+                if (faction2 == null)
+                {
+                    _log.Error($"faction {factionCreated.Tag} not found");
+                    return;
+                }
+
+                _uplinkManager.PublishChange(new HiveChangeEvent
+                {
+                    type = EVENT_TYPE_FACTION_CREATED_COMPLETE,
+                    raw = new JavaScriptSerializer().Serialize(new FactionCreateCompleteEvent
+                    {
+                        FactionId = faction2.FactionId,
+                        Tag = faction2.Tag,
+                    }),
+                });
+            }).Start();
         }
 
         private void NotifyFactionEdited(long factionId)
