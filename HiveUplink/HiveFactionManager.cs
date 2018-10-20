@@ -19,7 +19,7 @@ namespace HiveUplink
         const string EVENT_TYPE_FACTION_CREATED_COMPLETE = "factionCreatedComplete";
         const string EVENT_TYPE_FACTION_EDITED = "factionEdited";
 
-        private static readonly Logger _log = LogManager.GetCurrentClassLogger();
+        private static Logger _log => LogManager.GetCurrentClassLogger();
         private HiveUplinkManager _uplinkManager;
         private TorchSessionManager _sessionManager;
 

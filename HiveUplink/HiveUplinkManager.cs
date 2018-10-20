@@ -18,7 +18,7 @@ namespace HiveUplink
 
         public readonly HiveConfig Config;
 
-        private static readonly NLog.Logger _log = LogManager.GetCurrentClassLogger();
+        private static NLog.Logger _log => LogManager.GetCurrentClassLogger();
         private WebSocket _ws;
         private bool _wsEnabled = false;
         private TorchSessionManager _sessionManager;
@@ -39,6 +39,7 @@ namespace HiveUplink
             else
                 _log.Fatal("No session manager. FACTION HIVE DISABLED");
 
+            _wsEnabled = true;
             SetupWebSocket();
         }
 
@@ -51,7 +52,10 @@ namespace HiveUplink
         {
             var json = new JavaScriptSerializer().Serialize(ev);
             _log.Info($"PublishChange: {json}");
-            _ws.Send(json);
+            _ws.SendAsync(json, (a) =>
+            {
+                _log.Info($"Send: {a}");
+            });
         }
 
         public void RegisterChangeListener(string eventType, Action<string> action)
@@ -90,13 +94,11 @@ namespace HiveUplink
 
         private void SetupWebSocket()
         {
-            _wsEnabled = true;
             _ws = new WebSocket($"ws://hive.torch.fankserver.com/ws/hive/{Config.HiveId}/sector/{Config.SectorId}");
             _ws.OnMessage += WebSocketOnMessage;
             _ws.OnOpen += WebSocketOnOpen;
             _ws.OnError += WebSocketOnError;
             _ws.OnClose += WebSocketOnClose;
-            _ws.WaitTime = TimeSpan.FromSeconds(5);
             _ws.ConnectAsync();
         }
 
@@ -109,8 +111,8 @@ namespace HiveUplink
 
             if (_wsEnabled)
             {
-                Thread.Sleep(5000);
-                _ws.ConnectAsync();
+                Thread.Sleep(1000);
+                SetupWebSocket();
             }
         }
 
