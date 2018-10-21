@@ -161,7 +161,7 @@ namespace HiveUplink
             var faction = MySession.Static.Factions.TryGetFactionById(factionMemberAcceptJoin.FactionId);
             if (faction == null)
             {
-                _log.Fatal($"faction {faction.FactionId} does not exists");
+                _log.Fatal($"faction {factionMemberAcceptJoin.FactionId} does not exists");
                 return;
             }
 
@@ -300,7 +300,7 @@ namespace HiveUplink
             var faction = MySession.Static.Factions.TryGetFactionById(factionEdited.FactionId);
             if (faction == null)
             {
-                _log.Fatal($"faction {faction.FactionId} does not exists");
+                _log.Fatal($"faction {factionEdited.FactionId} does not exists");
                 return;
             }
 
@@ -343,7 +343,7 @@ namespace HiveUplink
             var faction = MySession.Static.Factions.TryGetFactionById(factionAutoAcceptChanged.FactionId);
             if (faction == null)
             {
-                _log.Fatal($"faction {faction.FactionId} does not exists");
+                _log.Fatal($"faction {factionAutoAcceptChanged.FactionId} does not exists");
                 return;
             }
 
