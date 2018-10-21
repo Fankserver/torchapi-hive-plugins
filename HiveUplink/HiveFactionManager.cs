@@ -20,7 +20,17 @@ namespace HiveUplink
         const string EVENT_TYPE_FACTION_EDITED = "factionEdited";
         const string EVENT_TYPE_FACTION_AUTO_ACCEPT_CHANGED = "factionAutoAcceptChanged";
         const string EVENT_TYPE_FACTION_REMOVED = "factionRemoved";
+        const string EVENT_TYPE_FACTION_MEMBER_SEND_JOIN = "factionMemberSendJoin";
+        const string EVENT_TYPE_FACTION_MEMBER_CANCEL_JOIN = "factionMemberCancelJoin";
         const string EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN = "factionMemberAcceptJoin";
+        const string EVENT_TYPE_FACTION_MEMBER_PROMOTE = "factionMemberPromote";
+        const string EVENT_TYPE_FACTION_MEMBER_DEMOTE = "factionMemberDemote";
+        const string EVENT_TYPE_FACTION_MEMBER_KICK = "factionMemberKick";
+        const string EVENT_TYPE_FACTION_MEMBER_LEAVE = "factionMemberLeave";
+        const string EVENT_TYPE_FACTION_SEND_PEACE_REQUEST = "factionSendPeaceRequest";
+        const string EVENT_TYPE_FACTION_CANCEL_PEACE_REQUEST = "factionCancelPeaceRequest";
+        const string EVENT_TYPE_FACTION_ACCEPT_PEACE = "factionAcceptPeace";
+        const string EVENT_TYPE_FACTION_DECLARE_WAR = "factionDeclareWar";
 
         private static readonly Logger _log = LogManager.GetCurrentClassLogger();
         private HiveUplinkManager _uplinkManager;
@@ -62,7 +72,17 @@ namespace HiveUplink
                 _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_EDITED, ReceivedFactionEdited);
                 _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_AUTO_ACCEPT_CHANGED, ReceivedFactionAutoAcceptChanged);
                 _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_REMOVED, ReceivedFactionRemoved);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_SEND_JOIN, ReceivedFactionMemberSendJoin);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_CANCEL_JOIN, ReceivedFactionMemberCancelJoin);
                 _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN, ReceivedFactionMemberAcceptJoin);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_PROMOTE, ReceivedFactionMemberPromote);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_DEMOTE, ReceivedFactionMemberDemote);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_KICK, ReceivedFactionMemberKick);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_LEAVE, ReceivedFactionMemberLeave);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_SEND_PEACE_REQUEST, ReceivedFactionSendPeaceRequest);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_CANCEL_PEACE_REQUEST, ReceivedFactionCancelPeaceRequest);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_ACCEPT_PEACE, ReceivedFactionAcceptPeace);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_DECLARE_WAR, ReceivedFactionDeclareWar);
             }
             else if (newState == TorchSessionState.Loaded)
             {
@@ -82,7 +102,17 @@ namespace HiveUplink
                 _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_EDITED, ReceivedFactionEdited);
                 _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_AUTO_ACCEPT_CHANGED, ReceivedFactionAutoAcceptChanged);
                 _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_REMOVED, ReceivedFactionRemoved);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_SEND_JOIN, ReceivedFactionMemberSendJoin);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_CANCEL_JOIN, ReceivedFactionMemberCancelJoin);
                 _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN, ReceivedFactionMemberAcceptJoin);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_PROMOTE, ReceivedFactionMemberPromote);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_DEMOTE, ReceivedFactionMemberDemote);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_KICK, ReceivedFactionMemberKick);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_LEAVE, ReceivedFactionMemberLeave);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_SEND_PEACE_REQUEST, ReceivedFactionSendPeaceRequest);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_CANCEL_PEACE_REQUEST, ReceivedFactionCancelPeaceRequest);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_ACCEPT_PEACE, ReceivedFactionAcceptPeace);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_DECLARE_WAR, ReceivedFactionDeclareWar);
             }
         }
 
@@ -102,37 +132,153 @@ namespace HiveUplink
                     });
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.SendPeaceRequest:
-                    break;
-                case VRage.Game.ModAPI.MyFactionStateChange.CancelPeaceRequest:
-                    break;
-                case VRage.Game.ModAPI.MyFactionStateChange.AcceptPeace:
-                    break;
-                case VRage.Game.ModAPI.MyFactionStateChange.DeclareWar:
-                    break;
-                case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberSendJoin:
-                    break;
-                case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberCancelJoin:
-                    break;
-                case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberAcceptJoin:
-                    var steamId = MySession.Static.Players.TryGetSteamId(playerId);
                     _uplinkManager.PublishChange(new HiveChangeEvent
                     {
-                        type = EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN,
-                        raw = new JavaScriptSerializer().Serialize(new FactionMemberAcceptJoinEvent
+                        type = EVENT_TYPE_FACTION_SEND_PEACE_REQUEST,
+                        raw = new JavaScriptSerializer().Serialize(new FactionPeaceWarEvent
+                        {
+                            FromFactionId = fromFactionId,
+                            ToFactionId = toFactionId,
+                        }),
+                    });
+                    break;
+                case VRage.Game.ModAPI.MyFactionStateChange.CancelPeaceRequest:
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_CANCEL_PEACE_REQUEST,
+                        raw = new JavaScriptSerializer().Serialize(new FactionPeaceWarEvent
+                        {
+                            FromFactionId = fromFactionId,
+                            ToFactionId = toFactionId,
+                        }),
+                    });
+                    break;
+                case VRage.Game.ModAPI.MyFactionStateChange.AcceptPeace:
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_ACCEPT_PEACE,
+                        raw = new JavaScriptSerializer().Serialize(new FactionPeaceWarEvent
+                        {
+                            FromFactionId = fromFactionId,
+                            ToFactionId = toFactionId,
+                        }),
+                    });
+                    break;
+                case VRage.Game.ModAPI.MyFactionStateChange.DeclareWar:
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_DECLARE_WAR,
+                        raw = new JavaScriptSerializer().Serialize(new FactionPeaceWarEvent
+                        {
+                            FromFactionId = fromFactionId,
+                            ToFactionId = toFactionId,
+                        }),
+                    });
+                    break;
+                case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberSendJoin:
+                    var steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    var name = MySession.Static.Players.TryGetIdentityNameFromSteamId(steamId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_SEND_JOIN,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberEvent
                         {
                             FactionId = toFactionId,
                             PlayerId = playerId,
                             PlayerSteamId = steamId,
+                            PlayerName = name,
+                        }),
+                    });
+                    break;
+                case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberCancelJoin:
+                    steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    name = MySession.Static.Players.TryGetIdentityNameFromSteamId(steamId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_CANCEL_JOIN,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberEvent
+                        {
+                            FactionId = toFactionId,
+                            PlayerId = playerId,
+                            PlayerSteamId = steamId,
+                            PlayerName = name,
+                        }),
+                    });
+                    break;
+                case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberAcceptJoin:
+                    steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    name = MySession.Static.Players.TryGetIdentityNameFromSteamId(steamId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberEvent
+                        {
+                            FactionId = toFactionId,
+                            PlayerId = playerId,
+                            PlayerSteamId = steamId,
+                            PlayerName = name,
                         }),
                     });
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberKick:
+                    steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    name = MySession.Static.Players.TryGetIdentityNameFromSteamId(steamId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_KICK,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberEvent
+                        {
+                            FactionId = toFactionId,
+                            PlayerId = playerId,
+                            PlayerSteamId = steamId,
+                            PlayerName = name,
+                        }),
+                    });
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberPromote:
+                    steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    name = MySession.Static.Players.TryGetIdentityNameFromSteamId(steamId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_PROMOTE,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberEvent
+                        {
+                            FactionId = toFactionId,
+                            PlayerId = playerId,
+                            PlayerSteamId = steamId,
+                            PlayerName = name,
+                        }),
+                    });
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberDemote:
+                    steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    name = MySession.Static.Players.TryGetIdentityNameFromSteamId(steamId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_PROMOTE,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberEvent
+                        {
+                            FactionId = toFactionId,
+                            PlayerId = playerId,
+                            PlayerSteamId = steamId,
+                            PlayerName = name,
+                        }),
+                    });
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberLeave:
+                    steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    name = MySession.Static.Players.TryGetIdentityNameFromSteamId(steamId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_LEAVE,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberEvent
+                        {
+                            FactionId = toFactionId,
+                            PlayerId = playerId,
+                            PlayerSteamId = steamId,
+                            PlayerName = name,
+                        }),
+                    });
                     break;
             }
         }
@@ -149,24 +295,248 @@ namespace HiveUplink
             MyFactionCollection.RemoveFaction(factionRemoved.FactionId);
         }
 
-        private void ReceivedFactionMemberAcceptJoin(string ev)
+        private void ReceivedFactionMemberSendJoin(string ev)
         {
-            var factionMemberAcceptJoin = new JavaScriptSerializer().Deserialize<FactionMemberAcceptJoinEvent>(ev);
-            if (factionMemberAcceptJoin == null)
+            var factionMember = new JavaScriptSerializer().Deserialize<FactionMemberEvent>(ev);
+            if (factionMember == null)
             {
                 _log.Fatal($"wrong event type received");
                 return;
             }
 
-            var faction = MySession.Static.Factions.TryGetFactionById(factionMemberAcceptJoin.FactionId);
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMember.FactionId);
             if (faction == null)
             {
-                _log.Fatal($"faction {factionMemberAcceptJoin.FactionId} does not exists");
+                _log.Fatal($"faction {factionMember.FactionId} does not exists");
                 return;
             }
 
-            long id = MySession.Static.Players.TryGetIdentityId(factionMemberAcceptJoin.PlayerSteamId);
+            var id = SandboxHack.Player.TryGetIdentityId(factionMember.PlayerSteamId, factionMember.PlayerName);
+            MyFactionCollection.SendJoinRequest(faction.FactionId, id);
+        }
+
+        private void ReceivedFactionMemberCancelJoin(string ev)
+        {
+            var factionMember = new JavaScriptSerializer().Deserialize<FactionMemberEvent>(ev);
+            if (factionMember == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMember.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {factionMember.FactionId} does not exists");
+                return;
+            }
+
+            var id = SandboxHack.Player.TryGetIdentityId(factionMember.PlayerSteamId, factionMember.PlayerName);
+            MyFactionCollection.CancelJoinRequest(faction.FactionId, id);
+        }
+
+        private void ReceivedFactionMemberAcceptJoin(string ev)
+        {
+            var factionMember = new JavaScriptSerializer().Deserialize<FactionMemberEvent>(ev);
+            if (factionMember == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMember.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {factionMember.FactionId} does not exists");
+                return;
+            }
+
+            var id = SandboxHack.Player.TryGetIdentityId(factionMember.PlayerSteamId, factionMember.PlayerName);
             MyFactionCollection.AcceptJoin(faction.FactionId, id);
+        }
+
+        private void ReceivedFactionMemberDemote(string ev)
+        {
+            var factionMember = new JavaScriptSerializer().Deserialize<FactionMemberEvent>(ev);
+            if (factionMember == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMember.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {factionMember.FactionId} does not exists");
+                return;
+            }
+
+            var id = SandboxHack.Player.TryGetIdentityId(factionMember.PlayerSteamId, factionMember.PlayerName);
+            MyFactionCollection.DemoteMember(faction.FactionId, id);
+        }
+
+        private void ReceivedFactionMemberPromote(string ev)
+        {
+            var factionMember = new JavaScriptSerializer().Deserialize<FactionMemberEvent>(ev);
+            if (factionMember == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMember.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {factionMember.FactionId} does not exists");
+                return;
+            }
+
+            var id = SandboxHack.Player.TryGetIdentityId(factionMember.PlayerSteamId, factionMember.PlayerName);
+            MyFactionCollection.PromoteMember(faction.FactionId, id);
+        }
+
+        private void ReceivedFactionMemberKick(string ev)
+        {
+            var factionMember = new JavaScriptSerializer().Deserialize<FactionMemberEvent>(ev);
+            if (factionMember == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMember.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {factionMember.FactionId} does not exists");
+                return;
+            }
+
+            var id = SandboxHack.Player.TryGetIdentityId(factionMember.PlayerSteamId, factionMember.PlayerName);
+            MyFactionCollection.KickMember(faction.FactionId, id);
+        }
+
+        private void ReceivedFactionMemberLeave(string ev)
+        {
+            var factionMember = new JavaScriptSerializer().Deserialize<FactionMemberEvent>(ev);
+            if (factionMember == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMember.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {factionMember.FactionId} does not exists");
+                return;
+            }
+
+            var id = SandboxHack.Player.TryGetIdentityId(factionMember.PlayerSteamId, factionMember.PlayerName);
+            MyFactionCollection.MemberLeaves(faction.FactionId, id);
+        }
+
+        private void ReceivedFactionSendPeaceRequest(string ev)
+        {
+            var factionPeaceWar = new JavaScriptSerializer().Deserialize<FactionPeaceWarEvent>(ev);
+            if (factionPeaceWar == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var fromFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.FromFactionId);
+            if (fromFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.FromFactionId} does not exists");
+                return;
+            }
+
+            var toFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.ToFactionId);
+            if (toFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.ToFactionId} does not exists");
+                return;
+            }
+
+            MyFactionCollection.SendPeaceRequest(fromFaction.FactionId, toFaction.FactionId);
+        }
+
+        private void ReceivedFactionCancelPeaceRequest(string ev)
+        {
+            var factionPeaceWar = new JavaScriptSerializer().Deserialize<FactionPeaceWarEvent>(ev);
+            if (factionPeaceWar == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var fromFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.FromFactionId);
+            if (fromFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.FromFactionId} does not exists");
+                return;
+            }
+
+            var toFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.ToFactionId);
+            if (toFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.ToFactionId} does not exists");
+                return;
+            }
+
+            MyFactionCollection.CancelPeaceRequest(fromFaction.FactionId, toFaction.FactionId);
+        }
+
+        private void ReceivedFactionAcceptPeace(string ev)
+        {
+            var factionPeaceWar = new JavaScriptSerializer().Deserialize<FactionPeaceWarEvent>(ev);
+            if (factionPeaceWar == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var fromFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.FromFactionId);
+            if (fromFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.FromFactionId} does not exists");
+                return;
+            }
+
+            var toFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.ToFactionId);
+            if (toFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.ToFactionId} does not exists");
+                return;
+            }
+
+            MyFactionCollection.AcceptPeace(fromFaction.FactionId, toFaction.FactionId);
+        }
+
+        private void ReceivedFactionDeclareWar(string ev)
+        {
+            var factionPeaceWar = new JavaScriptSerializer().Deserialize<FactionPeaceWarEvent>(ev);
+            if (factionPeaceWar == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var fromFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.FromFactionId);
+            if (fromFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.FromFactionId} does not exists");
+                return;
+            }
+
+            var toFaction = MySession.Static.Factions.TryGetFactionById(factionPeaceWar.ToFactionId);
+            if (toFaction == null)
+            {
+                _log.Fatal($"faction {factionPeaceWar.ToFactionId} does not exists");
+                return;
+            }
+
+            MyFactionCollection.DeclareWar(fromFaction.FactionId, toFaction.FactionId);
         }
 
         private void NotifyFactionCreated(long factionId)
@@ -391,10 +761,17 @@ namespace HiveUplink
         public long FactionId { get; set; }
     }
 
-    public class FactionMemberAcceptJoinEvent
+    public class FactionMemberEvent
     {
         public long FactionId { get; set; }
         public long PlayerId { get; set; }
         public ulong PlayerSteamId { get; set; }
+        public string PlayerName { get; set; }
+    }
+
+    public class FactionPeaceWarEvent
+    {
+        public long FromFactionId { get; set; }
+        public long ToFactionId { get; set; }
     }
 }
