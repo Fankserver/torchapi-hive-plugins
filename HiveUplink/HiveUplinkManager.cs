@@ -37,7 +37,7 @@ namespace HiveUplink
             if (_sessionManager != null)
                 _sessionManager.SessionStateChanged += SessionChanged;
             else
-                _log.Fatal("No session manager. FACTION HIVE DISABLED");
+                _log.Fatal("No session manager. FACTION SYNC DISABLED");
 
             _wsEnabled = true;
             SetupWebSocket();
@@ -127,7 +127,7 @@ namespace HiveUplink
 
         private void WebSocketOnOpen(object sender, EventArgs e)
         {
-            _log.Info("Hive connection established");
+            _log.Info("connection established");
         }
 
         private void WebSocketOnMessage(object sender, MessageEventArgs e)
