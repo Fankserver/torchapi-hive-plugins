@@ -18,6 +18,9 @@ namespace HiveUplink
         const string EVENT_TYPE_FACTION_CREATED = "factionCreated";
         const string EVENT_TYPE_FACTION_CREATED_COMPLETE = "factionCreatedComplete";
         const string EVENT_TYPE_FACTION_EDITED = "factionEdited";
+        const string EVENT_TYPE_FACTION_AUTO_ACCEPT_CHANGED = "factionAutoAcceptChanged";
+        const string EVENT_TYPE_FACTION_REMOVED = "factionRemoved";
+        const string EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN = "factionMemberAcceptJoin";
 
         private static Logger _log => LogManager.GetCurrentClassLogger();
         private HiveUplinkManager _uplinkManager;
@@ -25,6 +28,7 @@ namespace HiveUplink
 
         private List<string> factionCreateNotifyComplete = new List<string>();
         private List<long> factionEditedIgnore = new List<long>();
+        private List<long> factionAutoAcceptChangedIgnore = new List<long>();
 
         public HiveFactionManager(ITorchBase torchInstance) : base(torchInstance)
         {
@@ -55,6 +59,10 @@ namespace HiveUplink
             if (newState == TorchSessionState.Loading)
             {
                 _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_CREATED, ReceivedFactionCreated);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_EDITED, ReceivedFactionEdited);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_AUTO_ACCEPT_CHANGED, ReceivedFactionAutoAcceptChanged);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_REMOVED, ReceivedFactionRemoved);
+                _uplinkManager.RegisterChangeListener(EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN, ReceivedFactionMemberAcceptJoin);
             }
             else if (newState == TorchSessionState.Loaded)
             {
@@ -71,6 +79,10 @@ namespace HiveUplink
                 MySession.Static.Factions.FactionStateChanged -= Factions_FactionStateChanged;
 
                 _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_CREATED, ReceivedFactionCreated);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_EDITED, ReceivedFactionEdited);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_AUTO_ACCEPT_CHANGED, ReceivedFactionAutoAcceptChanged);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_REMOVED, ReceivedFactionRemoved);
+                _uplinkManager.UnregisterChangeListener(EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN, ReceivedFactionMemberAcceptJoin);
             }
         }
 
@@ -80,6 +92,14 @@ namespace HiveUplink
             switch (action)
             {
                 case VRage.Game.ModAPI.MyFactionStateChange.RemoveFaction:
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_REMOVED,
+                        raw = new JavaScriptSerializer().Serialize(new FactionRemoveEvent
+                        {
+                            FactionId = toFactionId,
+                        }),
+                    });
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.SendPeaceRequest:
                     break;
@@ -94,6 +114,17 @@ namespace HiveUplink
                 case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberCancelJoin:
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberAcceptJoin:
+                    var steamId = MySession.Static.Players.TryGetSteamId(playerId);
+                    _uplinkManager.PublishChange(new HiveChangeEvent
+                    {
+                        type = EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN,
+                        raw = new JavaScriptSerializer().Serialize(new FactionMemberAcceptJoinEvent
+                        {
+                            FactionId = toFactionId,
+                            PlayerId = playerId,
+                            PlayerSteamId = steamId,
+                        }),
+                    });
                     break;
                 case VRage.Game.ModAPI.MyFactionStateChange.FactionMemberKick:
                     break;
@@ -106,19 +137,36 @@ namespace HiveUplink
             }
         }
 
-        private void NotifyFactionAutoAcceptChanged(long factionId, bool autoAcceptMember, bool autoAcceptPeace)
+        private void ReceivedFactionRemoved(string ev)
         {
-            _log.Warn($"NotifyFactionAutoAcceptChanged {factionId} {autoAcceptMember} {autoAcceptPeace}");
-            _uplinkManager.PublishChange(new HiveChangeEvent
+            var factionRemoved = new JavaScriptSerializer().Deserialize<FactionRemoveEvent>(ev);
+            if (factionRemoved == null)
             {
-                type = "factionAutoAcceptChanged",
-                raw = new JavaScriptSerializer().Serialize(new FactionAutoAcceptChangeEvent
-                {
-                    FactionId = factionId,
-                    AutoAcceptMember = autoAcceptMember,
-                    AutoAcceptPeace = autoAcceptPeace,
-                }),
-            });
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            MyFactionCollection.RemoveFaction(factionRemoved.FactionId);
+        }
+
+        private void ReceivedFactionMemberAcceptJoin(string ev)
+        {
+            var factionMemberAcceptJoin = new JavaScriptSerializer().Deserialize<FactionMemberAcceptJoinEvent>(ev);
+            if (factionMemberAcceptJoin == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionMemberAcceptJoin.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {faction.FactionId} does not exists");
+                return;
+            }
+
+            long id = MySession.Static.Players.TryGetIdentityId(factionMemberAcceptJoin.PlayerSteamId);
+            MyFactionCollection.AcceptJoin(faction.FactionId, id);
         }
 
         private void NotifyFactionCreated(long factionId)
@@ -256,7 +304,51 @@ namespace HiveUplink
                 return;
             }
 
-            return;
+            factionEditedIgnore.Add(faction.FactionId);
+            MySession.Static.Factions.EditFaction(faction.FactionId, factionEdited.Tag, factionEdited.Name, factionEdited.Description, factionEdited.PrivateInfo);
+        }
+
+        private void NotifyFactionAutoAcceptChanged(long factionId, bool autoAcceptMember, bool autoAcceptPeace)
+        {
+            _log.Warn($"NotifyFactionAutoAcceptChanged {factionId} {autoAcceptMember} {autoAcceptPeace}");
+
+            if (factionAutoAcceptChangedIgnore.Exists((id) => id == factionId))
+            {
+                factionAutoAcceptChangedIgnore.Remove(factionId);
+                _log.Info("Ignored");
+                return;
+            }
+
+            _uplinkManager.PublishChange(new HiveChangeEvent
+            {
+                type = EVENT_TYPE_FACTION_AUTO_ACCEPT_CHANGED,
+                raw = new JavaScriptSerializer().Serialize(new FactionAutoAcceptChangeEvent
+                {
+                    FactionId = factionId,
+                    AutoAcceptMember = autoAcceptMember,
+                    AutoAcceptPeace = autoAcceptPeace,
+                }),
+            });
+        }
+
+        private void ReceivedFactionAutoAcceptChanged(string ev)
+        {
+            var factionAutoAcceptChanged = new JavaScriptSerializer().Deserialize<FactionAutoAcceptChangeEvent>(ev);
+            if (factionAutoAcceptChanged == null)
+            {
+                _log.Fatal($"wrong event type received");
+                return;
+            }
+
+            var faction = MySession.Static.Factions.TryGetFactionById(factionAutoAcceptChanged.FactionId);
+            if (faction == null)
+            {
+                _log.Fatal($"faction {faction.FactionId} does not exists");
+                return;
+            }
+
+            factionAutoAcceptChangedIgnore.Add(faction.FactionId);
+            MySession.Static.Factions.ChangeAutoAccept(faction.FactionId, faction.FounderId, factionAutoAcceptChanged.AutoAcceptMember, factionAutoAcceptChanged.AutoAcceptPeace);
         }
     }
 
@@ -292,5 +384,17 @@ namespace HiveUplink
         public string Name { get; set; }
         public string Description { get; set; }
         public string PrivateInfo { get; set; }
+    }
+
+    public class FactionRemoveEvent
+    {
+        public long FactionId { get; set; }
+    }
+
+    public class FactionMemberAcceptJoinEvent
+    {
+        public long FactionId { get; set; }
+        public long PlayerId { get; set; }
+        public ulong PlayerSteamId { get; set; }
     }
 }
