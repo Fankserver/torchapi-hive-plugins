@@ -22,7 +22,7 @@ namespace HiveUplink
         const string EVENT_TYPE_FACTION_REMOVED = "factionRemoved";
         const string EVENT_TYPE_FACTION_MEMBER_ACCEPT_JOIN = "factionMemberAcceptJoin";
 
-        private static Logger _log => LogManager.GetCurrentClassLogger();
+        private static readonly Logger _log = LogManager.GetCurrentClassLogger();
         private HiveUplinkManager _uplinkManager;
         private TorchSessionManager _sessionManager;
 

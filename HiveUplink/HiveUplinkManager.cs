@@ -18,7 +18,7 @@ namespace HiveUplink
 
         public readonly HiveConfig Config;
 
-        private static NLog.Logger _log => LogManager.GetCurrentClassLogger();
+        private static readonly NLog.Logger _log = LogManager.GetCurrentClassLogger();
         private WebSocket _ws;
         private bool _wsEnabled = false;
         private TorchSessionManager _sessionManager;
